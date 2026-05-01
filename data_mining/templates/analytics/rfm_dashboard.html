@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Customer Segmentation{% endblock %}
+
+{% block header %}Customer Segmentation (RFM Analysis){% endblock %}
+
+{% block content %}
+
+<!-- KPI CARDS -->
+<div class="row g-3 mb-4">
+
+    <div class="col-12 col-md-3">
+        <div class="card p-3 d-flex flex-row align-items-center gap-3">
+            <i class="bi bi-people fs-2 text-success"></i>
+            <div>
+                <small class="text-muted">Total Customers</small>
+                <h4 class="mb-0" id="totalCustomers">0</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-3">
+        <div class="card p-3 d-flex flex-row align-items-center gap-3">
+            <i class="bi bi-diagram-3 fs-2 text-success"></i>
+            <div>
+                <small class="text-muted">Segments</small>
+                <h4 class="mb-0" id="totalSegments">0</h4>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- MAIN SECTION -->
+<div class="row g-3">
+
+    <!-- CHART -->
+    <div class="col-12 col-lg-6">
+        <div class="card p-3">
+            <h5 class="mb-3">Segment Distribution</h5>
+
+            <div style="height: 445px;">
+                <canvas id="segmentChart"></canvas>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="col-12 col-lg-6">
+        <div class="card p-3">
+
+            <h5 class="mb-3">RFM Customer Segments</h5>
+
+            <table class="table table-hover table-sm datatable w-100">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Segment</th>
+                        <th>R</th>
+                        <th>F</th>
+                        <th>M</th>
+                    </tr>
+                </thead>
+
+                <tbody id="rfmTableBody"></tbody>
+            </table>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- BADGE STYLES -->
+<style>
+.seg-badge {
+    padding: 5px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.seg-high {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.seg-medium {
+    background: #fef9c3;
+    color: #854d0e;
+}
+
+.seg-low {
+    background: #fee2e2;
+    color: #991b1b;
+}
+</style>
+
+<script>
+
+let segmentsCount = {};
+let rfmTable = null;
+
+function getBadge(segment) {
+    const s = segment.toLowerCase();
+
+    if (s.includes("high") || s.includes("champ") || s.includes("loyal")) {
+        return "seg-high";
+    }
+    if (s.includes("mid") || s.includes("potential")) {
+        return "seg-medium";
+    }
+    return "seg-low";
+}
+
+/* =========================
+   INIT DATATABLE SAFELY
+========================= */
+function initRFMTable() {
+
+    if ($.fn.DataTable.isDataTable(".datatable")) {
+        $(".datatable").DataTable().destroy();
+    }
+
+    rfmTable = $(".datatable").DataTable({
+        pageLength: 10,          // ✅ YOUR REQUIREMENT
+        responsive: true,
+        searching: true,
+        ordering: true,
+        lengthChange: false
+    });
+}
+
+/* =========================
+   LOAD DATA
+========================= */
+fetch("/api/rfm/segments/")
+.then(r => r.json())
+.then(data => {
+
+    const tbody = document.getElementById("rfmTableBody");
+
+    data.segments.forEach(c => {
+
+        segmentsCount[c.segment] = (segmentsCount[c.segment] || 0) + 1;
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${c.customer_id}</td>
+                <td>
+                    <span class="seg-badge ${getBadge(c.segment)}">
+                        ${c.segment}
+                    </span>
+                </td>
+                <td>${c.recency}</td>
+                <td>${c.frequency}</td>
+                <td>${c.monetary}</td>
+            </tr>
+        `;
+    });
+
+    // KPIs
+    document.getElementById("totalCustomers").innerText = data.segments.length;
+    document.getElementById("totalSegments").innerText = Object.keys(segmentsCount).length;
+
+    // Chart
+    new Chart(document.getElementById("segmentChart"), {
+        type: "doughnut",
+        data: {
+            labels: Object.keys(segmentsCount),
+            datasets: [{
+                data: Object.values(segmentsCount)
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+
+    // ✅ INIT PAGINATION (IMPORTANT)
+    initRFMTable();
+});
+
+</script>
+
+{% endblock %}

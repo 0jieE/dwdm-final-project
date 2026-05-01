@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}Market Basket Analysis{% endblock %}
+
+{% block header %}Market Basket Analysis{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid py-3">
+
+    <!-- KPI ROW -->
+    <div class="row g-3 mb-4">
+
+        <div class="col-12 col-md-3">
+            <div class="card p-3 d-flex flex-row align-items-center gap-3">
+                <i class="bi bi-diagram-3 fs-2 text-success"></i>
+                <div>
+                    <small class="text-muted">Total Rules</small>
+                    <h4 class="mb-0" id="totalRules">0</h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-3">
+            <div class="card p-3 d-flex flex-row align-items-center gap-3">
+                <i class="bi bi-graph-up fs-2 text-success"></i>
+                <div>
+                    <small class="text-muted">Average Lift</small>
+                    <h4 class="mb-0" id="avgLift">0</h4>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MAIN ANALYTICS -->
+    <div class="row g-3">
+
+        <!-- CHART -->
+        <div class="col-12 col-lg-6">
+            <div class="card p-3 h-100 d-flex flex-column">
+
+                <h5 class="mb-3">Lift Distribution</h5>
+
+                <div class="flex-grow-1 chart-container">
+                    <canvas id="liftChart"></canvas>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- RULES TABLE -->
+        <div class="col-12 col-lg-6">
+            <div class="card p-3 h-100 d-flex flex-column">
+
+                <h5 class="mb-3">Association Rules</h5>
+
+                <div class="flex-grow-1 table-container">
+                    <table class="table table-hover table-sm datatable w-100">
+                        <thead>
+                            <tr>
+                                <th>Rule</th>
+                                <th>Lift</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rulesTableBody"></tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- =========================
+         INSIGHTS + TRANSACTIONS
+         SAME ROW (FIX REQUEST)
+    ========================== -->
+    <div class="row g-3 mt-3">
+
+        <!-- INSIGHTS -->
+        <div class="col-12 col-lg-6">
+            <div class="card p-3 h-100">
+
+                <h5 class="mb-3">Business Insights</h5>
+
+                <div id="insightsList" class="list-group list-group-flush"></div>
+
+            </div>
+        </div>
+
+        <!-- TRANSACTIONS -->
+        <div class="col-12 col-lg-6">
+            <div class="card p-3 h-100">
+
+                <h5 class="mb-3">Transaction Samples</h5>
+
+                <table class="table table-striped table-sm datatable w-100">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Items</th>
+                        </tr>
+                    </thead>
+                    <tbody id="basketTableBody"></tbody>
+                </table>
+
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<style>
+.table-container thead th {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 2;
+}
+
+.chart-container {
+    height: 350px;
+}
+
+.table-container {
+    height: 350px;
+    overflow-y: auto;
+}
+</style>
+
+<!-- =========================
+     SCRIPT
+========================= -->
+<script>
+
+let liftValues = [];
+let ruleLabels = [];
+let ruleCount = 0;
+
+/* =========================
+   RULES
+========================= */
+fetch("/api/apriori/rules/")
+.then(r => r.json())
+.then(data => {
+
+    const tbody = document.getElementById("rulesTableBody");
+
+    data.rules.forEach(r => {
+
+        const ruleText = r.antecedents.join(", ") + " → " + r.consequents.join(", ");
+
+        liftValues.push(r.lift);
+        ruleLabels.push(ruleText); // ✅ NEW
+        ruleCount++;
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${ruleText}</td>
+                <td>${r.lift.toFixed(2)}</td>
+            </tr>
+        `;
+    });
+
+    // KPI
+    document.getElementById("totalRules").innerText = ruleCount;
+
+    const avg = liftValues.reduce((a,b)=>a+b,0) / liftValues.length;
+    document.getElementById("avgLift").innerText = avg.toFixed(2);
+
+    // =========================
+    // CHART (FIXED LABELS)
+    // =========================
+    new Chart(document.getElementById("liftChart"), {
+        type: "bar",
+        data: {
+            labels: ruleLabels, // ✅ USE RULE TEXT
+            datasets: [{
+                label: "Lift",
+                data: liftValues
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        autoSkip: false,
+                        maxRotation: 60,
+                        minRotation: 30,
+                        callback: function(value) {
+                            let label = this.getLabelForValue(value);
+
+                            // truncate long rules
+                            return label.length > 25 
+                                ? label.substring(0, 25) + "..." 
+                                : label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+});
+
+
+/* =========================
+   INSIGHTS
+========================= */
+fetch("/api/apriori/insights/")
+.then(r => r.json())
+.then(data => {
+
+    const container = document.getElementById("insightsList");
+
+    data.insights.forEach(i => {
+        container.innerHTML += `
+            <div class="list-group-item">
+                <i class="bi bi-lightbulb text-warning me-2"></i>
+                ${i.interpretation}
+            </div>
+        `;
+    });
+
+});
+
+
+/* =========================
+   BASKETS
+========================= */
+fetch("/api/apriori/baskets/")
+.then(r => r.json())
+.then(data => {
+
+    const tbody = document.getElementById("basketTableBody");
+
+    Object.entries(data.sample).forEach(([id, items]) => {
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${id}</td>
+                <td>${items.join(", ")}</td>
+            </tr>
+        `;
+    });
+
+    // INIT DATATABLES AFTER ALL DATA LOAD
+    initTables();
+
+});
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Data Mining Dashboard{% endblock %}</title>
+
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+
+    <style>
+        :root {
+            --primary: #256713;
+            --primary-soft: rgba(37, 103, 19, 0.12);
+            --bg: #f6f8f5;
+            --card: #ffffff;
+            --text: #1f2937;
+            --muted: #6b7280;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        /* TOPBAR */
+        .topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            border-bottom: 1px solid #e5e7eb;
+            z-index: 1100;
+        }
+
+        .brand {
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .menu-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 10px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            width: 260px;
+            height: calc(100vh - 60px);
+            background: white;
+            border-right: 1px solid #e5e7eb;
+            padding: 20px;
+            transition: 0.3s ease;
+            z-index: 1000;
+        }
+
+        .nav-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: var(--text);
+            margin-bottom: 6px;
+            transition: 0.2s;
+            font-size: 14px;
+        }
+
+        .nav-link i {
+            font-size: 18px;
+        }
+
+        .nav-link:hover {
+            background: var(--primary-soft);
+            color: var(--primary);
+        }
+
+        .nav-link.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* MAIN */
+        .main {
+            margin-left: 260px;
+            padding: 80px 25px 25px;
+        }
+
+        .page-header {
+            background: white;
+            border-radius: 14px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 20px;
+        }
+
+        .page-header h2 {
+            font-weight: 700;
+        }
+
+        .page-header small {
+            color: var(--muted);
+        }
+
+        /* CARDS */
+        .card {
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            background: var(--card);
+            transition: 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+
+        /* MOBILE */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main {
+                margin-left: 0;
+                padding: 80px 15px 15px;
+            }
+
+            .menu-btn {
+                display: block;
+            }
+        }
+    </style>
+
+    {% block head %}{% endblock %}
+</head>
+
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+    <button class="menu-btn" onclick="toggleSidebar()">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <div class="brand">
+        <i class="bi bi-bar-chart-line-fill"></i>
+        Data Mining Dashboard
+    </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+
+    <div class="nav-title">Main Modules</div>
+
+    <a class="nav-link {% if request.resolver_match.url_name == 'dataset_page' %}active{% endif %}"
+       href="{% url 'dataset_page' %}">
+        <i class="bi bi-table"></i>
+        Dataset
+    </a>
+
+    <a class="nav-link {% if request.resolver_match.url_name == 'basket_dashboard' %}active{% endif %}"
+       href="{% url 'basket_dashboard' %}">
+        <i class="bi bi-cart3"></i>
+        Market Basket
+    </a>
+
+    <a class="nav-link {% if request.resolver_match.url_name == 'rfm_dashboard' %}active{% endif %}"
+       href="{% url 'rfm_dashboard' %}">
+        <i class="bi bi-people"></i>
+        Customer Segmentation
+    </a>
+
+    <a class="nav-link {% if request.resolver_match.url_name == 'recommendation_dashboard' %}active{% endif %}"
+       href="{% url 'recommendation_dashboard' %}">
+        <i class="bi bi-lightning-charge"></i>
+        Recommendations
+    </a>
+
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+    <div class="page-header">
+        <h2>{% block header %}Dashboard{% endblock %}</h2>
+        <small>Analytics, segmentation, and data mining insights system</small>
+    </div>
+
+    {% block content %}{% endblock %}
+
+</div>
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<!-- DataTables -->
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+function toggleSidebar() {
+    document.getElementById("sidebar").classList.toggle("active");
+}
+
+// close sidebar on outside click (mobile UX)
+document.addEventListener("click", function(e) {
+    const sidebar = document.getElementById("sidebar");
+    const btn = document.querySelector(".menu-btn");
+
+    if (!sidebar.contains(e.target) && !btn.contains(e.target)) {
+        sidebar.classList.remove("active");
+    }
+});
+
+</script>
+
+{% block scripts %}
+
+{% endblock %}
+
+</body>
+</html>
